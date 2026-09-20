@@ -1,98 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArcadeHome } from './components/ArcadeHome';
-import { MissionScene } from './components/MissionScene';
+import { useCallback, useState } from 'react';
+import { SoundEngine, type SoundName } from './audio/soundEngine';
+import { BattleStage, type BattleEncounter } from './components/BattleStage';
+import { RpgOverworld } from './components/RpgOverworld';
 import { Onboarding } from './components/Onboarding';
-import { LEVELS, applyReward, type Mission } from './game/missions';
 import { createProfile, loadProfile, saveProfile } from './game/profile';
-import { reduceSession, startSession, type SessionEvent, type SessionState } from './game/session';
 import type { PlayerProfile, Track } from './game/types';
+import { BYTEBROOK_ENCOUNTERS } from './rpg/bytebrook';
+import { createRpgState, reduceRpg } from './rpg/gameReducer';
 import './styles/arcade.css';
-
-type View = 'onboarding' | 'home' | 'signoff';
-
+type View = 'onboarding' | 'village' | 'battle';
+const sound = new SoundEngine();
 const App = () => {
   const [profile, setProfile] = useState<PlayerProfile | null>(() => loadProfile());
-  const [view, setView] = useState<View>(() => loadProfile() ? 'home' : 'onboarding');
-  const [session, setSession] = useState<SessionState | null>(null);
-  const rewardedCompletionKey = useRef<string | null>(null);
-  const profileRef = useRef(profile);
-
-  useEffect(() => {
-    profileRef.current = profile;
-  }, [profile]);
-
-  useEffect(() => {
-    if (session?.status !== 'complete') {
-      rewardedCompletionKey.current = null;
-      return;
-    }
-    const completionKey = session.mission ? `${session.mission.id}:${session.elapsed}:${session.answer ?? ''}` : null;
-    if (!session.mission || !session.correct || !completionKey || rewardedCompletionKey.current === completionKey) return;
-
-    const currentProfile = profileRef.current;
-    if (!currentProfile) return;
-
-    rewardedCompletionKey.current = completionKey;
-    const rewarded = applyReward(currentProfile, session.mission, true);
-    profileRef.current = rewarded;
-    saveProfile(rewarded);
-    setProfile(rewarded);
-  }, [session]);
-
-  useEffect(() => {
-    if (session?.status === 'exited') setSession(null);
-  }, [session]);
-
-  const beginProfile = useCallback((name: string, track: Track) => {
-    const nextProfile = createProfile(name, track);
-    profileRef.current = nextProfile;
-    saveProfile(nextProfile);
-    setProfile(nextProfile);
-    setView('home');
-  }, []);
-
-  const selectMission = useCallback((mission: Mission) => {
-    setSession(startSession(mission));
-  }, []);
-
-  const dispatchSession = useCallback((event: SessionEvent) => {
-    setSession((current) => current ? reduceSession(current, event) : current);
-  }, []);
-
-  const returnHome = useCallback(() => {
-    setSession(null);
-    setView('home');
-  }, []);
-
-  const startNextMission = useCallback((completedMission: Mission) => {
-    const nextMission = LEVELS.find((mission) => mission.level === completedMission.level + 1);
-    if (nextMission) setSession(startSession(nextMission));
-  }, []);
-
-  const finishArcade = useCallback(() => {
-    setSession(null);
-    setView('signoff');
-  }, []);
-
-  if (session) {
-    return <MissionScene session={session} onEvent={dispatchSession} onReturnHome={returnHome} onNextMission={startNextMission} onFinishArcade={finishArcade} />;
-  }
-
-  if (view === 'signoff' && profile) {
-    return (
-      <main className="signoff-screen app-shell" aria-labelledby="signoff-title">
-        <p className="eyebrow">ALL SIGNALS CLEAR</p>
-        <div className="sprite-player signoff-sprite" aria-hidden="true" />
-        <h1 id="signoff-title">The nook is glowing because you showed up.</h1>
-        <p className="intro">Eight missions complete. Keep the small wins close, {profile.name}.</p>
-        <button className="pixel-button primary" type="button" onClick={() => setView('home')}>Return to room</button>
-      </main>
-    );
-  }
-
+  const [view, setView] = useState<View>(() => loadProfile() ? 'village' : 'onboarding');
+  const [rpg, setRpg] = useState(createRpgState);
+  const [encounter, setEncounter] = useState<BattleEncounter | null>(null);
+  const [soundOn, setSoundOn] = useState(false);
+  const beginProfile = useCallback((name: string, track: Track) => { const nextProfile = createProfile(name, track); saveProfile(nextProfile); setProfile(nextProfile); setView('village'); }, []);
   if (!profile || view === 'onboarding') return <Onboarding onComplete={beginProfile} />;
-
-  return <ArcadeHome profile={profile} onSelectMission={selectMission} />;
+  const play = (name: SoundName) => sound.play(name);
+  const enter = (sceneId: string) => { const next = BYTEBROOK_ENCOUNTERS[sceneId]; if (!next) return; setEncounter(next); setRpg((state) => ({ ...state, activeSceneId: sceneId, coachText: null, encounterStatus: 'battle' })); setView('battle'); play('select'); };
+  const victory = () => setRpg((state) => state.activeSceneId === 'terminal-square' ? { ...state, encounterStatus: 'victory', unlockedSceneIds: [...new Set([...state.unlockedSceneIds, 'data-garden'])] } : { ...state, encounterStatus: 'victory' });
+  const leaveBattle = () => { setRpg((state) => reduceRpg(state, { type: 'NEXT_TURN' })); setView('village'); };
+  const toggleSound = () => { const next = !soundOn; sound.setEnabled(next); setSoundOn(next); if (next) sound.play('select'); };
+  return <main className="rpg-shell" aria-labelledby="bytebrook-title"><header className="rpg-header"><div><p>NEON NOOK</p><h1 id="bytebrook-title">Bytebrook</h1></div><div className="rpg-stats"><span>{profile.name}</span><span>XP {profile.xp}</span><button type="button" onClick={toggleSound}>{soundOn ? 'Sound on' : 'Sound off'}</button></div></header>{view === 'battle' && encounter ? <BattleStage encounter={encounter} coachText={rpg.coachText} onTurn={() => setRpg((state) => reduceRpg(state, { type: 'NEXT_TURN' }))} onCoach={(kind) => setRpg((state) => reduceRpg(state, { type: 'SET_COACH_TEXT', text: kind === 'hint' ? 'Look at what each list method changes: append adds; sort orders.' : 'A method is an action attached to a value. Lists can add items, remove items, or rearrange themselves.' }))} onVictory={victory} onExit={leaveBattle} onSound={play} /> : <RpgOverworld unlockedSceneIds={rpg.unlockedSceneIds} activeSceneId={rpg.activeSceneId} onEnter={enter} onStep={() => play('step')} />}</main>;
 };
-
 export default App;
