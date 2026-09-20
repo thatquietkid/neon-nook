@@ -8,21 +8,48 @@ import type { PlayerProfile, Track } from './game/types';
 import { BYTEBROOK_ENCOUNTERS } from './rpg/bytebrook';
 import { createRpgState, reduceRpg } from './rpg/gameReducer';
 import './styles/arcade.css';
+
 type View = 'onboarding' | 'village' | 'battle';
 const sound = new SoundEngine();
+
 const App = () => {
   const [profile, setProfile] = useState<PlayerProfile | null>(() => loadProfile());
   const [view, setView] = useState<View>(() => loadProfile() ? 'village' : 'onboarding');
   const [rpg, setRpg] = useState(createRpgState);
   const [encounter, setEncounter] = useState<BattleEncounter | null>(null);
   const [soundOn, setSoundOn] = useState(false);
-  const beginProfile = useCallback((name: string, track: Track) => { const nextProfile = createProfile(name, track); saveProfile(nextProfile); setProfile(nextProfile); setView('village'); }, []);
+
+  const beginProfile = useCallback((name: string, track: Track) => {
+    const nextProfile = createProfile(name, track);
+    saveProfile(nextProfile);
+    setProfile(nextProfile);
+    setView('village');
+  }, []);
+
   if (!profile || view === 'onboarding') return <Onboarding onComplete={beginProfile} />;
+
   const play = (name: SoundName) => sound.play(name);
-  const enter = (sceneId: string) => { const next = BYTEBROOK_ENCOUNTERS[sceneId]; if (!next) return; setEncounter(next); setRpg((state) => ({ ...state, activeSceneId: sceneId, coachText: null, encounterStatus: 'battle' })); setView('battle'); play('select'); };
+  const enter = (sceneId: string) => {
+    const next = BYTEBROOK_ENCOUNTERS[sceneId];
+    if (!next) return;
+    setEncounter(next);
+    setRpg((state) => ({ ...state, activeSceneId: sceneId, coachText: null, encounterStatus: 'battle' }));
+    setView('battle');
+    play('select');
+  };
   const victory = () => setRpg((state) => state.activeSceneId === 'terminal-square' ? { ...state, encounterStatus: 'victory', unlockedSceneIds: [...new Set([...state.unlockedSceneIds, 'data-garden'])] } : { ...state, encounterStatus: 'victory' });
-  const leaveBattle = () => { setRpg((state) => reduceRpg(state, { type: 'NEXT_TURN' })); setView('village'); };
-  const toggleSound = () => { const next = !soundOn; sound.setEnabled(next); setSoundOn(next); if (next) sound.play('select'); };
-  return <main className="rpg-shell" aria-labelledby="bytebrook-title"><header className="rpg-header"><div><p>NEON NOOK</p><h1 id="bytebrook-title">Bytebrook</h1></div><div className="rpg-stats"><span>{profile.name}</span><span>XP {profile.xp}</span><button type="button" onClick={toggleSound}>{soundOn ? 'Sound on' : 'Sound off'}</button></div></header>{view === 'battle' && encounter ? <BattleStage encounter={encounter} coachText={rpg.coachText} onTurn={() => setRpg((state) => reduceRpg(state, { type: 'NEXT_TURN' }))} onCoach={(kind) => setRpg((state) => reduceRpg(state, { type: 'SET_COACH_TEXT', text: kind === 'hint' ? 'Look at what each list method changes: append adds; sort orders.' : 'A method is an action attached to a value. Lists can add items, remove items, or rearrange themselves.' }))} onVictory={victory} onExit={leaveBattle} onSound={play} /> : <RpgOverworld unlockedSceneIds={rpg.unlockedSceneIds} activeSceneId={rpg.activeSceneId} onEnter={enter} onStep={() => play('step')} />}</main>;
+  const leaveBattle = () => {
+    setRpg((state) => reduceRpg(state, { type: 'NEXT_TURN' }));
+    setView('village');
+  };
+  const toggleSound = () => {
+    const next = !soundOn;
+    sound.setEnabled(next);
+    setSoundOn(next);
+    if (next) sound.play('select');
+  };
+
+  return <main className="rpg-shell" aria-labelledby="bytebrook-title"><header className="rpg-header"><div><p>NEON NOOK</p><h1 id="bytebrook-title">Bytebrook</h1></div><div className="rpg-stats"><span>{profile.name}</span><span>XP {profile.xp}</span><button type="button" onClick={toggleSound}>{soundOn ? 'Mute sound' : 'Enable sound'}</button></div></header>{view === 'battle' && encounter ? <BattleStage encounter={encounter} coachText={rpg.coachText} onTurn={() => setRpg((state) => reduceRpg(state, { type: 'NEXT_TURN' }))} onCoach={(kind) => setRpg((state) => reduceRpg(state, { type: 'SET_COACH_TEXT', text: kind === 'hint' ? 'Look at what each list method changes: append adds; sort orders.' : 'A method is an action attached to a value. Lists can add items, remove items, or rearrange themselves.' }))} onVictory={victory} onExit={leaveBattle} onSound={play} /> : <RpgOverworld unlockedSceneIds={rpg.unlockedSceneIds} activeSceneId={rpg.activeSceneId} player={rpg.player} onMove={(direction) => setRpg((state) => reduceRpg(state, { type: 'MOVE', direction }))} onEnter={enter} onStep={() => play('step')} />}</main>;
 };
+
 export default App;

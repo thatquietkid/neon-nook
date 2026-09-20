@@ -12,3 +12,11 @@ it('renders the Data Garden destination only after route unlock', async () => {
   expect(locked.textContent).not.toMatch(/Data Garden/);
   expect(unlocked.textContent).toMatch(/Data Garden/);
 });
+
+it('sends an arrow-key movement direction to the overworld controller', async () => {
+  const root = document.createElement('div');
+  const moves: string[] = [];
+  await act(async () => createRoot(root).render(<RpgOverworld unlockedSceneIds={['terminal-square']} onEnter={() => undefined} onMove={(direction) => moves.push(direction)} />));
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+  expect(moves).toEqual(['right']);
+});
