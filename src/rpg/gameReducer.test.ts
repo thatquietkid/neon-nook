@@ -11,4 +11,9 @@ describe('Bytebrook RPG route', () => {
     const state = { ...createRpgState(), activeSceneId: 'terminal-square', encounterStatus: 'victory' as const };
     expect(reduceRpg(state, { type: 'CONTINUE' }).unlockedSceneIds).toContain('data-garden');
   });
+  it('moves the explorer one grid tile without crossing the village boundary', () => {
+    const state = { ...createRpgState(), player: { x: 0, y: 0 } };
+    expect(reduceRpg(state, { type: 'MOVE', direction: 'left' }).player).toEqual({ x: 0, y: 0 });
+    expect(reduceRpg(state, { type: 'MOVE', direction: 'right' }).player).toEqual({ x: 1, y: 0 });
+  });
 });
