@@ -87,3 +87,7 @@ h2 { font-family: 'VT323', monospace; font-size: clamp(1.7rem, 5vw, 2.45rem); li
 @media (max-width:700px){.rpg-header{align-items:flex-start}.rpg-stats{justify-content:flex-end;flex-wrap:wrap}.bytebrook-stage{min-height:31rem}.world-terminal{left:5%;transform:scale(.82);transform-origin:left top}.world-garden{right:3%;transform:scale(.78);transform-origin:right top}.world-mill{right:4%;transform:scale(.75);transform-origin:right bottom}.guide-bubble{grid-template-columns:2.5rem 1fr}.action-hint{display:none}.world-tree.tree-two{display:none}.overworld-prompt{font-size:.9rem}}
 @media (prefers-reduced-motion:reduce){.bytebrook-stage *{animation:none!important}.location-plaque{transition:none}}
 
+
+.bytebrook-console .guide-bubble{position:relative;left:auto;bottom:auto;z-index:auto;width:auto;min-height:0;box-sizing:border-box}
+.bytebrook-console .overworld-prompt{position:relative;right:auto;bottom:auto;z-index:auto;box-sizing:border-box}
+
