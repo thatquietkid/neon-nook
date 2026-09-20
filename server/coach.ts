@@ -33,7 +33,7 @@ const localCoachReply = (request: CoachRequest): string => {
 
 export const createCerebrasClient = ({
   apiKey = process.env.CEREBRAS_API_KEY,
-  model = process.env.CEREBRAS_MODEL ?? 'gpt-oss-120b',
+  model = process.env.CEREBRAS_MODEL?.trim() || 'gpt-oss-120b',
   fetcher = fetch,
   timeoutMs = 8_000,
 }: CerebrasClientOptions = {}): CoachClient => async (request) => {

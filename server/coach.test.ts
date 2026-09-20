@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { createCerebrasClient, getCoachReply, type CoachRequest } from './coach';
 import { createApp } from './index';
@@ -14,6 +14,13 @@ const validRequest: CoachRequest = {
 const providerReply = {
   choices: [{ message: { content: 'Start by thinking about what changes a list in place.' } }],
 };
+const originalModel = process.env.CEREBRAS_MODEL;
+
+afterEach(() => {
+  vi.useRealTimers();
+  if (originalModel === undefined) delete process.env.CEREBRAS_MODEL;
+  else process.env.CEREBRAS_MODEL = originalModel;
+});
 
 describe('study coach', () => {
   it('rejects a malformed coaching payload', async () => {
@@ -59,6 +66,22 @@ describe('study coach', () => {
     expect(response.status).toBe(429);
   });
 
+  it('does not let a forwarded-for header create new rate-limit buckets', async () => {
+    const app = createApp({ coachClient: async () => providerReply, rateLimit: 1 });
+
+    await request(app)
+      .post('/api/coach')
+      .set('X-Forwarded-For', '203.0.113.10')
+      .send(validRequest)
+      .expect(200);
+    const response = await request(app)
+      .post('/api/coach')
+      .set('X-Forwarded-For', '203.0.113.11')
+      .send(validRequest);
+
+    expect(response.status).toBe(429);
+  });
+
   it('sends a Cerebras-compatible chat completion request', async () => {
     let receivedUrl = '';
     let receivedInit: RequestInit | undefined;
@@ -85,5 +108,35 @@ describe('study coach', () => {
       ],
     });
     expect(response).toEqual(providerReply);
+  });
+
+  it('uses the default model when the environment override is blank', async () => {
+    process.env.CEREBRAS_MODEL = '   ';
+    let receivedInit: RequestInit | undefined;
+    const fetcher: typeof fetch = async (_url, init) => {
+      receivedInit = init;
+      return new Response(JSON.stringify(providerReply), { status: 200 });
+    };
+
+    await createCerebrasClient({ apiKey: 'test-key', fetcher })(validRequest);
+
+    expect(JSON.parse(String(receivedInit?.body))).toMatchObject({ model: 'gpt-oss-120b' });
+  });
+
+  it('falls back locally when the provider exceeds the eight-second timeout', async () => {
+    vi.useFakeTimers();
+    let aborted = false;
+    const fetcher: typeof fetch = async (_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        aborted = true;
+        reject(new Error('request timed out'));
+      });
+    });
+    const reply = getCoachReply(validRequest, createCerebrasClient({ apiKey: 'test-key', fetcher }));
+
+    await vi.advanceTimersByTimeAsync(8_000);
+
+    await expect(reply).resolves.toMatchObject({ source: 'local' });
+    expect(aborted).toBe(true);
   });
 });

@@ -30,7 +30,6 @@ export const createApp = ({ coachClient = createCerebrasClient(), rateLimit = 20
   const allowRequest = createIpLimiter(rateLimit);
 
   app.disable('x-powered-by');
-  app.set('trust proxy', 1);
   app.use(express.json({ limit: '10kb' }));
 
   app.post('/api/coach', async (req, res) => {

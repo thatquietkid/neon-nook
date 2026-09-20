@@ -29,7 +29,7 @@ The server validates coach requests and provider responses, times out provider c
 
 ## Deployment
 
-For a Render web service, use `npm run build` as the build command and `npm start` as the start command. Render supplies `PORT`; configure `CEREBRAS_API_KEY` and any `CEREBRAS_MODEL` override as server environment variables.
+For a Render web service, use `npm run build` as the build command and `npm start` as the start command. Render supplies `PORT`. In the Render service's Environment page, add `CEREBRAS_API_KEY` as a server environment variable and, if wanted, add `CEREBRAS_MODEL`; never place either value in the client build or repository.
 
 ## Checks
 
