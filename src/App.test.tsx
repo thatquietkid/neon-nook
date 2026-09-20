@@ -106,3 +106,12 @@ it('starts the duration-selected recommended mission from the home card', async 
   expect(container.textContent).toMatch(/level 2/i);
   expect(container.textContent).toMatch(/data dust-off/i);
 });
+
+it('shows the local mission explanation when the coach request fails', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+  await startFirstMission();
+
+  await click(/need a hint/i);
+
+  expect(container.textContent).toMatch(/append places one value at the end of a Python list/i);
+});
