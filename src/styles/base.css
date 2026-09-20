@@ -1,0 +1,66 @@
+:root {
+  color: #f5f7ff;
+  background: #0a0b16;
+  font-family: 'Courier New', Courier, monospace;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #0a0b16;
+}
+
+button,
+a,
+input,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid #ffda6a;
+  outline-offset: 4px;
+}
+
+.app-shell {
+  width: min(100% - 2rem, 64rem);
+  margin: 0 auto;
+  padding: clamp(3rem, 12vw, 8rem) 0;
+}
+
+.eyebrow {
+  color: #66f5d1;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  max-width: 12ch;
+  margin: 1rem 0;
+  color: #ffda6a;
+  font-size: clamp(2.5rem, 9vw, 6rem);
+  line-height: 0.95;
+}
+
+.intro {
+  color: #b6bfdc;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
