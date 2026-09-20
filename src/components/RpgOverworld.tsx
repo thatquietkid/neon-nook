@@ -31,7 +31,7 @@ export const RpgOverworld = ({ unlockedSceneIds, activeSceneId, player = { x: 0,
   return (
     <section className="bytebrook-stage" aria-label="Bytebrook village">
       <div className="bytebrook-sky" aria-hidden="true"><i /><i /><i /></div><div className="bytebrook-hills" aria-hidden="true" /><div className="bytebrook-path" aria-hidden="true" /><div className="bytebrook-water" aria-hidden="true" />
-      <div className="bytebrook-player" style={{ transform: `translate(${player.x * 28}px, ${player.y * 18}px)` }} role="img" aria-label="Your explorer moves through Bytebrook" /><div className="bytebrook-guide" aria-hidden="true"><span>!</span></div>
+      <div className="bytebrook-player" style={{ left: `calc(47% + ${player.x * 28}px)`, bottom: `calc(13% - ${player.y * 18}px)` }} role="img" aria-label="Your explorer moves through Bytebrook" /><div className="bytebrook-guide" aria-hidden="true"><span>!</span></div>
       <aside className="guide-bubble"><strong>Nova</strong><br />Follow the lanterns. Your code moves are how you help Bytebrook.</aside>
       {landmarks.map((landmark) => {
         const unlocked = unlockedSceneIds.includes(landmark.id);
