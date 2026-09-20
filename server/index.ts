@@ -1,13 +1,17 @@
 import 'dotenv/config';
 import express from 'express';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { coachRequestSchema, createCerebrasClient, getCoachReply, type CoachClient } from './coach';
 
 type AppOptions = {
   coachClient?: CoachClient;
   rateLimit?: number;
+  staticDirectory?: string;
 };
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
+const defaultStaticDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 
 const createIpLimiter = (limit: number) => {
   const visits = new Map<string, { count: number; resetAt: number }>();
@@ -25,12 +29,17 @@ const createIpLimiter = (limit: number) => {
   };
 };
 
-export const createApp = ({ coachClient = createCerebrasClient(), rateLimit = 20 }: AppOptions = {}) => {
+export const createApp = ({
+  coachClient = createCerebrasClient(),
+  rateLimit = 20,
+  staticDirectory = defaultStaticDirectory,
+}: AppOptions = {}) => {
   const app = express();
   const allowRequest = createIpLimiter(rateLimit);
 
   app.disable('x-powered-by');
   app.use(express.json({ limit: '10kb' }));
+  app.use(express.static(staticDirectory));
 
   app.post('/api/coach', async (req, res) => {
     const parsed = coachRequestSchema.safeParse(req.body);
@@ -43,6 +52,13 @@ export const createApp = ({ coachClient = createCerebrasClient(), rateLimit = 20
 
     const reply = await getCoachReply(parsed.data, coachClient);
     return res.json({ text: reply.text });
+  });
+
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path === '/api' || req.path.startsWith('/api/')) return next();
+    return res.sendFile('index.html', { root: staticDirectory }, (error) => {
+      if (error) next(error);
+    });
   });
 
   return app;

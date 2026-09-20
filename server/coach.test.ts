@@ -2,6 +2,9 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createCerebrasClient, getCoachReply, type CoachRequest } from './coach';
 import { createApp } from './index';
 
@@ -138,5 +141,38 @@ describe('study coach', () => {
 
     await expect(reply).resolves.toMatchObject({ source: 'local' });
     expect(aborted).toBe(true);
+  });
+});
+
+describe('production SPA hosting', () => {
+  let staticDirectory: string | undefined;
+
+  afterEach(() => {
+    if (staticDirectory) rmSync(staticDirectory, { force: true, recursive: true });
+    staticDirectory = undefined;
+  });
+
+  it('serves the built SPA index at the root URL', async () => {
+    staticDirectory = mkdtempSync(join(tmpdir(), 'neon-nook-dist-'));
+    writeFileSync(join(staticDirectory, 'index.html'), '<!doctype html><title>Neon Nook</title>');
+    const app = createApp({ coachClient: async () => providerReply, staticDirectory });
+
+    const response = await request(app).get('/');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<title>Neon Nook</title>');
+  });
+
+  it('uses the SPA index for client routes without intercepting API paths', async () => {
+    staticDirectory = mkdtempSync(join(tmpdir(), 'neon-nook-dist-'));
+    writeFileSync(join(staticDirectory, 'index.html'), '<!doctype html><title>Neon Nook</title>');
+    const app = createApp({ coachClient: async () => providerReply, staticDirectory });
+
+    const clientRoute = await request(app).get('/missions/one');
+    const apiRoute = await request(app).get('/api/coach');
+
+    expect(clientRoute.status).toBe(200);
+    expect(clientRoute.text).toContain('<title>Neon Nook</title>');
+    expect(apiRoute.status).toBe(404);
   });
 });
