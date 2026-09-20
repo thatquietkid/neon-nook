@@ -10,28 +10,33 @@ import './styles/arcade.css';
 
 type View = 'onboarding' | 'home' | 'signoff';
 
-const isFinalClear = (profile: PlayerProfile) => LEVELS.every((mission) => profile.completed.includes(mission.id));
-
 const App = () => {
   const [profile, setProfile] = useState<PlayerProfile | null>(() => loadProfile());
   const [view, setView] = useState<View>(() => loadProfile() ? 'home' : 'onboarding');
   const [session, setSession] = useState<SessionState | null>(null);
-  const rewardedSession = useRef<SessionState | null>(null);
+  const rewardedCompletionKey = useRef<string | null>(null);
+  const profileRef = useRef(profile);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   useEffect(() => {
     if (session?.status !== 'complete') {
-      rewardedSession.current = null;
+      rewardedCompletionKey.current = null;
       return;
     }
-    if (!session.mission || !session.correct || rewardedSession.current === session) return;
+    const completionKey = session.mission ? `${session.mission.id}:${session.elapsed}:${session.answer ?? ''}` : null;
+    if (!session.mission || !session.correct || !completionKey || rewardedCompletionKey.current === completionKey) return;
 
-    rewardedSession.current = session;
-    setProfile((current) => {
-      if (!current) return current;
-      const rewarded = applyReward(current, session.mission!, true);
-      saveProfile(rewarded);
-      return rewarded;
-    });
+    const currentProfile = profileRef.current;
+    if (!currentProfile) return;
+
+    rewardedCompletionKey.current = completionKey;
+    const rewarded = applyReward(currentProfile, session.mission, true);
+    profileRef.current = rewarded;
+    saveProfile(rewarded);
+    setProfile(rewarded);
   }, [session]);
 
   useEffect(() => {
@@ -40,6 +45,7 @@ const App = () => {
 
   const beginProfile = useCallback((name: string, track: Track) => {
     const nextProfile = createProfile(name, track);
+    profileRef.current = nextProfile;
     saveProfile(nextProfile);
     setProfile(nextProfile);
     setView('home');
@@ -58,13 +64,18 @@ const App = () => {
     setView('home');
   }, []);
 
+  const startNextMission = useCallback((completedMission: Mission) => {
+    const nextMission = LEVELS.find((mission) => mission.level === completedMission.level + 1);
+    if (nextMission) setSession(startSession(nextMission));
+  }, []);
+
   const finishArcade = useCallback(() => {
     setSession(null);
     setView('signoff');
   }, []);
 
   if (session) {
-    return <MissionScene session={session} onEvent={dispatchSession} onReturnHome={returnHome} onFinishArcade={finishArcade} />;
+    return <MissionScene session={session} onEvent={dispatchSession} onReturnHome={returnHome} onNextMission={startNextMission} onFinishArcade={finishArcade} />;
   }
 
   if (view === 'signoff' && profile) {

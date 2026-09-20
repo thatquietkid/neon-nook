@@ -39,6 +39,9 @@ export const ArcadeHome = ({ profile, onSelectMission }: ArcadeHomeProps) => {
           <p className="eyebrow">RECOMMENDED QUEST</p>
           <h2 id="mission-title">{recommended.title}</h2>
           <p>{recommended.minutes}-minute {recommended.track} mission · {recommended.topic.replaceAll('-', ' ')}</p>
+          <button className="pixel-button primary" type="button" onClick={() => onSelectMission(recommended)}>
+            Start recommended mission
+          </button>
         </div>
         <div className="duration-buttons" aria-label="Preferred mission length">
           {[3, 7, 15].map((duration) => (

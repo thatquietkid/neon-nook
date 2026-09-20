@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { SessionEvent, SessionState } from '../game/session';
+import type { Mission } from '../game/missions';
 import { PauseMenu } from './PauseMenu';
 import { EndScreen } from './EndScreen';
 
@@ -7,10 +8,11 @@ type MissionSceneProps = {
   session: SessionState;
   onEvent: (event: SessionEvent) => void;
   onReturnHome: () => void;
+  onNextMission: (mission: Mission) => void;
   onFinishArcade: () => void;
 };
 
-export const MissionScene = ({ session, onEvent, onReturnHome, onFinishArcade }: MissionSceneProps) => {
+export const MissionScene = ({ session, onEvent, onReturnHome, onNextMission, onFinishArcade }: MissionSceneProps) => {
   const mission = session.mission;
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export const MissionScene = ({ session, onEvent, onReturnHome, onFinishArcade }:
           correct
           finalMission={mission.level === 8}
           onRetry={() => onEvent({ type: 'RESTART' })}
-          onContinue={mission.level === 8 ? onFinishArcade : onReturnHome}
+          onContinue={mission.level === 8 ? onFinishArcade : () => onNextMission(mission)}
         />
       </main>
     );

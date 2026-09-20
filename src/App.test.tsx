@@ -1,7 +1,8 @@
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
+import type { PlayerProfile } from './game/types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -34,6 +35,15 @@ const finishFirstMissionCorrectly = async (): Promise<void> => {
   await click(/notes\.append\(4\)/i);
 };
 
+const remount = async (app: React.ReactNode = <App />): Promise<void> => {
+  await act(async () => root.unmount());
+  container.remove();
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root.render(app));
+};
+
 beforeEach(async () => {
   localStorage.clear();
   container = document.createElement('div');
@@ -43,6 +53,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await act(async () => root.unmount());
   container.remove();
 });
@@ -59,4 +70,39 @@ it('shows level completion after a correct answer', async () => {
 
   expect(container.textContent).toMatch(/level clear/i);
   expect(container.textContent).toMatch(/next level/i);
+});
+
+it('persists one completion reward when Strict Mode replays state updaters', async () => {
+  await remount(<StrictMode><App /></StrictMode>);
+  const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+  await finishFirstMissionCorrectly();
+
+  expect(setItem).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(localStorage.getItem('neon-nook-profile-v1') ?? '{}')).toMatchObject({ xp: 40, unlockedLevel: 2 });
+});
+
+it('begins the newly unlocked mission from Next level', async () => {
+  await finishFirstMissionCorrectly();
+  await click(/next level/i);
+
+  expect(container.textContent).toMatch(/level 2/i);
+  expect(container.textContent).toMatch(/data dust-off/i);
+  expect(container.textContent).toMatch(/a quick signal from the terminal/i);
+});
+
+it('starts the duration-selected recommended mission from the home card', async () => {
+  const returningPlayer: PlayerProfile = {
+    name: 'Nitin', track: 'python', xp: 40, streak: 1, unlockedLevel: 2,
+    confidence: { 'python-lists': 10 }, completed: ['python-lists'],
+  };
+  localStorage.setItem('neon-nook-profile-v1', JSON.stringify(returningPlayer));
+  await remount();
+
+  await click(/^7 min$/i);
+  expect(container.textContent).toMatch(/data dust-off/i);
+  await click(/start recommended mission/i);
+
+  expect(container.textContent).toMatch(/level 2/i);
+  expect(container.textContent).toMatch(/data dust-off/i);
 });
